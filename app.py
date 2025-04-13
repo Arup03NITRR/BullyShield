@@ -9,8 +9,12 @@ from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from nltk.stem import PorterStemmer
 import string
+import os
 
 app = Flask(__name__)
+
+# Add custom NLTK data path
+nltk.data.path.append('./nltk_data')
 
 # Load models
 with open('./saved_models/tfidf.pkl', 'rb') as file:
@@ -57,25 +61,23 @@ def encourage(label):
     }
     return encouragements.get(label, "Don't be a bully!")
 
-# Prediction Function
-nltk.download('stopwords')
-nltk.download('punkt')
-
+# Text Preprocessing
 def text_preprocessing(text):
-    text = text.lower().translate(str.maketrans('', '', string.punctuation))  # Remove punctuation
-    tokens = word_tokenize(text.strip())  # Tokenization with whitespace cleanup
+    text = text.lower().translate(str.maketrans('', '', string.punctuation))
+    tokens = word_tokenize(text.strip())
     stop_words = set(stopwords.words('english'))
-    tokens = [x for x in tokens if x not in stop_words]  # Remove stopwords
+    tokens = [x for x in tokens if x not in stop_words]
     stemmer = PorterStemmer()
-    tokens = [stemmer.stem(x) for x in tokens]  # Stemming
+    tokens = [stemmer.stem(x) for x in tokens]
     return ' '.join(tokens)
 
+# Prediction Function
 def prediction(text):
     text = text_preprocessing(text)
     print(text)
     transformed_text = tfidf.transform([text])
     result = rf_clf.predict(transformed_text)[0]
-    return get_type(int(result))  # Ensure it's an integer before using it in the dictionary lookup
+    return get_type(int(result))
 
 # Flask Routes
 @app.route("/", methods=["GET", "POST"])
@@ -86,12 +88,12 @@ def home():
     if request.method == "POST":
         val = request.form["text"]
         result = prediction(val)
-        
-        if result in ["level 3", "level 5"]:  # Fix: Direct comparison with string values
+
+        if result in ["level 3", "level 5"]:
             subject = f"Discrimination Alert: {result}"
             message = "Cybercrime Branch has been notified!"
             send_email(subject, "User is facing discrimination.")
-    
+
     return render_template("index.html", result=result, message=message)
 
 if __name__ == '__main__':
